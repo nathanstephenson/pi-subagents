@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { parseFrontmatter } from "@mariozechner/pi-coding-agent";
+import { dirname, join } from "node:path";
+import { getAgentDir, parseFrontmatter } from "@mariozechner/pi-coding-agent";
 
 export type AgentSource = "user" | "project";
+export type AgentScope = "user" | "project" | "both";
 
 export interface AgentConfig {
 	name: string;
@@ -17,6 +18,15 @@ export interface AgentConfig {
 export interface AgentDirectory {
 	dir: string;
 	source: AgentSource;
+}
+
+export interface AgentDiscoveryOptions {
+	userAgentsDir?: string;
+}
+
+export interface AgentDiscoveryResult {
+	agents: AgentConfig[];
+	projectAgentsDir: string | null;
 }
 
 type AgentFrontmatter = Record<string, unknown> & {
@@ -79,4 +89,44 @@ export function discoverAgentsInDirectories(directories: AgentDirectory[]): Agen
 		}
 	}
 	return Array.from(byName.values());
+}
+
+function isDirectory(path: string): boolean {
+	try {
+		return existsSync(path) && readdirSync(path, { withFileTypes: true }) !== undefined;
+	} catch {
+		return false;
+	}
+}
+
+export function findNearestProjectAgentsDir(cwd: string): string | null {
+	let current = cwd;
+	while (true) {
+		const candidate = join(current, ".pi", "agents");
+		if (isDirectory(candidate)) return candidate;
+
+		const parent = dirname(current);
+		if (parent === current) return null;
+		current = parent;
+	}
+}
+
+export function discoverAgents(
+	cwd: string,
+	scope: AgentScope = "user",
+	options: AgentDiscoveryOptions = {},
+): AgentDiscoveryResult {
+	const userAgentsDir = options.userAgentsDir ?? join(getAgentDir(), "agents");
+	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
+	const directories: AgentDirectory[] = [];
+
+	if (scope === "user" || scope === "both") directories.push({ dir: userAgentsDir, source: "user" });
+	if ((scope === "project" || scope === "both") && projectAgentsDir) {
+		directories.push({ dir: projectAgentsDir, source: "project" });
+	}
+
+	return {
+		agents: discoverAgentsInDirectories(directories),
+		projectAgentsDir,
+	};
 }
