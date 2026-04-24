@@ -15,7 +15,7 @@ Inside Pi, run:
 /subagents
 ```
 
-Expected: notification that scaffold loaded.
+Expected: list of discovered agents, or a warning that no agents were found.
 
 ## GitHub publishing checklist
 
