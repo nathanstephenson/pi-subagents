@@ -1,0 +1,36 @@
+{
+  "name": "pi-subagents",
+  "version": "0.1.0",
+  "description": "Pi coding-agent package for delegating work to isolated subagents.",
+  "type": "module",
+  "homepage": "https://github.com/nathanstephenson/pi-subagents#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nathanstephenson/pi-subagents.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nathanstephenson/pi-subagents/issues"
+  },
+  "keywords": ["pi-package", "pi", "pi-coding-agent", "subagents", "agent", "coding-agent"],
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "pi": {
+    "extensions": ["./src/index.ts"],
+    "prompts": ["./prompts"],
+    "skills": []
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.8.0"
+  }
+}
