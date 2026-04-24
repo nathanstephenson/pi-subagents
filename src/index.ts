@@ -1,7 +1,8 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { discoverAgents, type AgentScope } from "./agents.js";
 import { createNodeSpawnPi } from "./node-spawn.js";
-import { findRequestedProjectAgents, shouldConfirmProjectAgents } from "./project-agent-approval.js";
+import { executeParallelSubagents } from "./parallel-executor.js";
+import { findRequestedProjectAgents, getRequestedAgentNames, shouldConfirmProjectAgents } from "./project-agent-approval.js";
 import type { RawSubagentRequest } from "./request.js";
 import { validateSubagentRequest } from "./request.js";
 import { SubagentParamsSchema } from "./schema.js";
@@ -39,16 +40,16 @@ export default function registerSubagents(pi: ExtensionAPI) {
 				return { content: [{ type: "text", text: validation.error }], details: { results: [] }, isError: true } as any;
 			}
 
-			if (validation.value.mode !== "single") {
+			if (validation.value.mode === "chain") {
 				return {
-					content: [{ type: "text", text: "Only single mode is implemented in this version. Use agent + task." }],
+					content: [{ type: "text", text: "Chain mode is not implemented yet. Use agent + task or tasks[]." }],
 					details: { results: [] },
 					isError: true,
 				} as any;
 			}
 
 			const discovery = discoverAgents(ctx.cwd, validation.value.agentScope);
-			const projectAgents = findRequestedProjectAgents(discovery.agents, [validation.value.agent]);
+			const projectAgents = findRequestedProjectAgents(discovery.agents, getRequestedAgentNames(validation.value));
 			if (
 				shouldConfirmProjectAgents({
 					agentScope: validation.value.agentScope,
@@ -71,12 +72,24 @@ export default function registerSubagents(pi: ExtensionAPI) {
 				}
 			}
 
+			const spawn = createNodeSpawnPi();
+			if (validation.value.mode === "parallel") {
+				return executeParallelSubagents({
+					defaultCwd: ctx.cwd,
+					agents: discovery.agents,
+					projectAgentsDir: discovery.projectAgentsDir,
+					request: validation.value,
+					spawn,
+					signal,
+				});
+			}
+
 			return executeSingleSubagent({
 				defaultCwd: ctx.cwd,
 				agents: discovery.agents,
 				projectAgentsDir: discovery.projectAgentsDir,
 				request: validation.value,
-				spawn: createNodeSpawnPi(),
+				spawn,
 				signal,
 			});
 		},

@@ -1,4 +1,5 @@
 import type { AgentConfig, AgentScope } from "./agents.js";
+import type { ValidSubagentRequest } from "./request.js";
 
 export interface ShouldConfirmProjectAgentsOptions {
 	agentScope: AgentScope;
@@ -10,6 +11,12 @@ export interface ShouldConfirmProjectAgentsOptions {
 export function findRequestedProjectAgents(agents: AgentConfig[], requestedAgentNames: string[]): AgentConfig[] {
 	const requested = new Set(requestedAgentNames);
 	return agents.filter((agent) => agent.source === "project" && requested.has(agent.name));
+}
+
+export function getRequestedAgentNames(request: ValidSubagentRequest): string[] {
+	if (request.mode === "single") return [request.agent];
+	if (request.mode === "parallel") return request.tasks.map((task) => task.agent);
+	return request.chain.map((task) => task.agent);
 }
 
 export function shouldConfirmProjectAgents(options: ShouldConfirmProjectAgentsOptions): boolean {
