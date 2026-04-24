@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { discoverAgents, type AgentScope } from "./agents.js";
 import { createNodeSpawnPi } from "./node-spawn.js";
+import { findRequestedProjectAgents, shouldConfirmProjectAgents } from "./project-agent-approval.js";
 import type { RawSubagentRequest } from "./request.js";
 import { validateSubagentRequest } from "./request.js";
 import { SubagentParamsSchema } from "./schema.js";
@@ -47,6 +48,29 @@ export default function registerSubagents(pi: ExtensionAPI) {
 			}
 
 			const discovery = discoverAgents(ctx.cwd, validation.value.agentScope);
+			const projectAgents = findRequestedProjectAgents(discovery.agents, [validation.value.agent]);
+			if (
+				shouldConfirmProjectAgents({
+					agentScope: validation.value.agentScope,
+					confirmProjectAgents: validation.value.confirmProjectAgents,
+					hasUI: ctx.hasUI,
+					projectAgentCount: projectAgents.length,
+				})
+			) {
+				const names = projectAgents.map((agent) => agent.name).join(", ");
+				const ok = await ctx.ui.confirm(
+					"Run project-local subagents?",
+					`Agents: ${names}\nSource: ${discovery.projectAgentsDir ?? "(unknown)"}\n\nProject agents are repo-controlled. Continue only for trusted repositories.`,
+				);
+				if (!ok) {
+					return {
+						content: [{ type: "text", text: "Canceled: project-local subagents not approved." }],
+						details: { results: [] },
+						isError: true,
+					} as any;
+				}
+			}
+
 			return executeSingleSubagent({
 				defaultCwd: ctx.cwd,
 				agents: discovery.agents,
