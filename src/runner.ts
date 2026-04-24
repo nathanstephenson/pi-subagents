@@ -2,7 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentConfig } from "./agents.js";
-import { createRunResult, ingestPiJsonEvent, type SingleRunResult } from "./result-collector.js";
+import {
+	createRunResult,
+	ingestPiJsonEvent,
+	type SingleRunResult,
+} from "./result-collector.js";
 
 export interface PiInvocation {
 	command: string;
@@ -29,7 +33,10 @@ export interface RunSingleAgentOptions {
 	spawn: SpawnPi;
 }
 
-function writeSystemPromptTempFile(agentName: string, systemPrompt: string): { dir: string; filePath: string } {
+function writeSystemPromptTempFile(
+	agentName: string,
+	systemPrompt: string,
+): { dir: string; filePath: string } {
 	const dir = mkdtempSync(join(tmpdir(), "pi-subagents-"));
 	const safeAgentName = agentName.replace(/[^\w.-]+/g, "_");
 	const filePath = join(dir, `system-${safeAgentName}.md`);
@@ -37,18 +44,28 @@ function writeSystemPromptTempFile(agentName: string, systemPrompt: string): { d
 	return { dir, filePath };
 }
 
-export async function runSingleAgent(options: RunSingleAgentOptions): Promise<SingleRunResult> {
-	const result = createRunResult(options.agent.name, options.task, options.agent.source);
+export async function runSingleAgent(
+	options: RunSingleAgentOptions,
+): Promise<SingleRunResult> {
+	const result = createRunResult(
+		options.agent.name,
+		options.task,
+		options.agent.source,
+	);
 	result.model = options.agent.model;
 	result.step = options.step;
 
 	const args = ["--mode", "json", "-p", "--no-session"];
 	if (options.agent.model) args.push("--model", options.agent.model);
-	if (options.agent.tools?.length) args.push("--tools", options.agent.tools.join(","));
+	if (options.agent.tools?.length)
+		args.push("--tools", options.agent.tools.join(","));
 
 	let tmpDir: string | undefined;
 	if (options.agent.systemPrompt.trim()) {
-		const tmp = writeSystemPromptTempFile(options.agent.name, options.agent.systemPrompt);
+		const tmp = writeSystemPromptTempFile(
+			options.agent.name,
+			options.agent.systemPrompt,
+		);
 		tmpDir = tmp.dir;
 		args.push("--append-system-prompt", tmp.filePath);
 	}

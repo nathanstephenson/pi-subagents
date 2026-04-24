@@ -8,17 +8,26 @@ export interface ShouldConfirmProjectAgentsOptions {
 	projectAgentCount: number;
 }
 
-export function findRequestedProjectAgents(agents: AgentConfig[], requestedAgentNames: string[]): AgentConfig[] {
+export function findRequestedProjectAgents(
+	agents: AgentConfig[],
+	requestedAgentNames: string[],
+): AgentConfig[] {
 	const requested = new Set(requestedAgentNames);
-	return agents.filter((agent) => agent.source === "project" && requested.has(agent.name));
+	return agents.filter(
+		(agent) => agent.source === "project" && requested.has(agent.name),
+	);
 }
 
-export function getRequestedAgentNames(request: ValidSubagentRequest): string[] {
+export function getRequestedAgentNames(
+	request: ValidSubagentRequest,
+): string[] {
 	if (request.mode === "single") return [request.agent];
 	return request.tasks.map((task) => task.agent);
 }
 
-export function shouldConfirmProjectAgents(options: ShouldConfirmProjectAgentsOptions): boolean {
+export function shouldConfirmProjectAgents(
+	options: ShouldConfirmProjectAgentsOptions,
+): boolean {
 	return (
 		options.hasUI &&
 		options.confirmProjectAgents &&

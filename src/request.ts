@@ -19,27 +19,48 @@ export interface RawSubagentRequest {
 }
 
 export type ValidSubagentRequest =
-	| (TaskRequest & { mode: "single"; agentScope: AgentScope; confirmProjectAgents: boolean })
-	| { mode: "parallel"; tasks: TaskRequest[]; agentScope: AgentScope; confirmProjectAgents: boolean };
+	| (TaskRequest & {
+			mode: "single";
+			agentScope: AgentScope;
+			confirmProjectAgents: boolean;
+	  })
+	| {
+			mode: "parallel";
+			tasks: TaskRequest[];
+			agentScope: AgentScope;
+			confirmProjectAgents: boolean;
+	  };
 
-export type ValidationResult = { ok: true; value: ValidSubagentRequest } | { ok: false; error: string };
+export type ValidationResult =
+	| { ok: true; value: ValidSubagentRequest }
+	| { ok: false; error: string };
 
-export function validateSubagentRequest(params: RawSubagentRequest): ValidationResult {
-	const hasSingle = Boolean(params.agent && params.task);
-	const hasParallel = Boolean(params.tasks?.length);
+export function validateSubagentRequest(
+	params: RawSubagentRequest,
+): ValidationResult {
+	const singleAgent = params.agent;
+	const singleTask = params.task;
+	const parallelTasks = params.tasks;
+	const hasSingle = Boolean(singleAgent && singleTask);
+	const hasParallel = Boolean(parallelTasks?.length);
 	const hasChain = Boolean(params.chain?.length);
 
 	if (hasChain) {
 		return {
 			ok: false,
-			error: "Chain mode is not supported. Let the main agent inspect each result and decide the next delegation.",
+			error:
+				"Chain mode is not supported. Let the main agent inspect each result and decide the next delegation.",
 		};
 	}
 
 	const modeCount = Number(hasSingle) + Number(hasParallel);
 
 	if (modeCount !== 1) {
-		return { ok: false, error: "Provide exactly one mode: single (agent + task), parallel (tasks), or chain (chain)." };
+		return {
+			ok: false,
+			error:
+				"Provide exactly one mode: single (agent + task), parallel (tasks), or chain (chain).",
+		};
 	}
 
 	const common = {
@@ -47,18 +68,30 @@ export function validateSubagentRequest(params: RawSubagentRequest): ValidationR
 		confirmProjectAgents: params.confirmProjectAgents ?? true,
 	};
 
-	if (hasSingle) {
+	if (singleAgent && singleTask) {
 		return {
 			ok: true,
-			value: { mode: "single", ...common, agent: params.agent!, task: params.task!, cwd: params.cwd },
+			value: {
+				mode: "single",
+				...common,
+				agent: singleAgent,
+				task: singleTask,
+				cwd: params.cwd,
+			},
 		};
 	}
 
-	if (hasParallel) {
-		if (params.tasks!.length > MAX_PARALLEL_TASKS) {
-			return { ok: false, error: `Too many parallel tasks (${params.tasks!.length}). Max is ${MAX_PARALLEL_TASKS}.` };
+	if (parallelTasks?.length) {
+		if (parallelTasks.length > MAX_PARALLEL_TASKS) {
+			return {
+				ok: false,
+				error: `Too many parallel tasks (${parallelTasks.length}). Max is ${MAX_PARALLEL_TASKS}.`,
+			};
 		}
-		return { ok: true, value: { mode: "parallel", ...common, tasks: params.tasks! } };
+		return {
+			ok: true,
+			value: { mode: "parallel", ...common, tasks: parallelTasks },
+		};
 	}
 
 	return { ok: false, error: "Unreachable validation state." };

@@ -1,10 +1,28 @@
 import { describe, expect, test } from "bun:test";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { AgentConfig } from "../src/agents.js";
 import { executeParallelSubagents } from "../src/parallel-executor.js";
+import type { SubagentDetails } from "../src/tool-executor.js";
+
+type ToolResultWithError = AgentToolResult<SubagentDetails> & {
+	isError?: boolean;
+};
 
 const agents: AgentConfig[] = [
-	{ name: "scout", description: "Scout", systemPrompt: "Scout", source: "user", filePath: "/agents/scout.md" },
-	{ name: "planner", description: "Planner", systemPrompt: "Planner", source: "user", filePath: "/agents/planner.md" },
+	{
+		name: "scout",
+		description: "Scout",
+		systemPrompt: "Scout",
+		source: "user",
+		filePath: "/agents/scout.md",
+	},
+	{
+		name: "planner",
+		description: "Planner",
+		systemPrompt: "Planner",
+		source: "user",
+		filePath: "/agents/planner.md",
+	},
 ];
 
 describe("parallel subagent executor", () => {
@@ -27,16 +45,23 @@ describe("parallel subagent executor", () => {
 				stdoutLines: [
 					JSON.stringify({
 						type: "message_end",
-						message: { role: "assistant", content: [{ type: "text", text: invocation.args.at(-1) }] },
+						message: {
+							role: "assistant",
+							content: [{ type: "text", text: invocation.args.at(-1) }],
+						},
 					}),
 				],
 			}),
 		});
 
-		expect((result as any).isError).toBeUndefined();
-		expect(result.details.results.map((run) => run.agent)).toEqual(["scout", "planner"]);
+		expect((result as ToolResultWithError).isError).toBeUndefined();
+		expect(result.details.results.map((run) => run.agent)).toEqual([
+			"scout",
+			"planner",
+		]);
 		expect(result.content[0].type).toBe("text");
-		if (result.content[0].type === "text") expect(result.content[0].text).toContain("Parallel: 2/2 succeeded");
+		if (result.content[0].type === "text")
+			expect(result.content[0].text).toContain("Parallel: 2/2 succeeded");
 	});
 
 	test("returns error when any task references an unknown agent", async () => {
@@ -52,8 +77,9 @@ describe("parallel subagent executor", () => {
 			spawn: async () => ({ exitCode: 0, stderr: "", stdoutLines: [] }),
 		});
 
-		expect((result as any).isError).toBe(true);
+		expect((result as ToolResultWithError).isError).toBe(true);
 		expect(result.content[0].type).toBe("text");
-		if (result.content[0].type === "text") expect(result.content[0].text).toContain('Unknown agent: "missing"');
+		if (result.content[0].type === "text")
+			expect(result.content[0].text).toContain('Unknown agent: "missing"');
 	});
 });
