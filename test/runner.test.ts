@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentConfig } from "../src/agents.js";
-import { runSingleAgent } from "../src/runner.js";
+import { type PiInvocation, runSingleAgent } from "../src/runner.js";
 
 const scout: AgentConfig = {
 	name: "scout",
@@ -14,7 +14,7 @@ const scout: AgentConfig = {
 
 describe("single agent runner", () => {
 	test("builds Pi JSON invocation and collects output", async () => {
-		const calls: any[] = [];
+		const calls: PiInvocation[] = [];
 		const result = await runSingleAgent({
 			defaultCwd: "/repo",
 			agent: scout,
@@ -27,7 +27,10 @@ describe("single agent runner", () => {
 					stdoutLines: [
 						JSON.stringify({
 							type: "message_end",
-							message: { role: "assistant", content: [{ type: "text", text: "Found auth.ts" }] },
+							message: {
+								role: "assistant",
+								content: [{ type: "text", text: "Found auth.ts" }],
+							},
 						}),
 					],
 				};
@@ -56,7 +59,11 @@ describe("single agent runner", () => {
 			cwd: "/repo/packages/app",
 			agent: scout,
 			task: "Find auth code",
-			spawn: async (invocation) => ({ exitCode: invocation.cwd === "/repo/packages/app" ? 7 : 1, stderr: "boom", stdoutLines: [] }),
+			spawn: async (invocation) => ({
+				exitCode: invocation.cwd === "/repo/packages/app" ? 7 : 1,
+				stderr: "boom",
+				stdoutLines: [],
+			}),
 		});
 
 		expect(result.exitCode).toBe(7);

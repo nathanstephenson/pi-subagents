@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getAgentDir, parseFrontmatter } from "@mariozechner/pi-coding-agent";
 
@@ -36,10 +36,13 @@ type AgentFrontmatter = Record<string, unknown> & {
 	model?: string;
 };
 
-function loadAgentsFromDirectory({ dir, source }: AgentDirectory): AgentConfig[] {
+function loadAgentsFromDirectory({
+	dir,
+	source,
+}: AgentDirectory): AgentConfig[] {
 	if (!existsSync(dir)) return [];
 
-	let entries;
+	let entries: Dirent[];
 	try {
 		entries = readdirSync(dir, { withFileTypes: true });
 	} catch {
@@ -81,7 +84,9 @@ function loadAgentsFromDirectory({ dir, source }: AgentDirectory): AgentConfig[]
 	return agents;
 }
 
-export function discoverAgentsInDirectories(directories: AgentDirectory[]): AgentConfig[] {
+export function discoverAgentsInDirectories(
+	directories: AgentDirectory[],
+): AgentConfig[] {
 	const byName = new Map<string, AgentConfig>();
 	for (const directory of directories) {
 		for (const agent of loadAgentsFromDirectory(directory)) {
@@ -93,7 +98,10 @@ export function discoverAgentsInDirectories(directories: AgentDirectory[]): Agen
 
 function isDirectory(path: string): boolean {
 	try {
-		return existsSync(path) && readdirSync(path, { withFileTypes: true }) !== undefined;
+		return (
+			existsSync(path) &&
+			readdirSync(path, { withFileTypes: true }) !== undefined
+		);
 	} catch {
 		return false;
 	}
@@ -120,7 +128,8 @@ export function discoverAgents(
 	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
 	const directories: AgentDirectory[] = [];
 
-	if (scope === "user" || scope === "both") directories.push({ dir: userAgentsDir, source: "user" });
+	if (scope === "user" || scope === "both")
+		directories.push({ dir: userAgentsDir, source: "user" });
 	if ((scope === "project" || scope === "both") && projectAgentsDir) {
 		directories.push({ dir: projectAgentsDir, source: "project" });
 	}

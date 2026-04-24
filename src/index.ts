@@ -1,22 +1,48 @@
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { discoverAgents, type AgentScope } from "./agents.js";
+import { type AgentScope, discoverAgents } from "./agents.js";
 import { createNodeSpawnPi } from "./node-spawn.js";
 import { executeParallelSubagents } from "./parallel-executor.js";
-import { findRequestedProjectAgents, getRequestedAgentNames, shouldConfirmProjectAgents } from "./project-agent-approval.js";
+import {
+	findRequestedProjectAgents,
+	getRequestedAgentNames,
+	shouldConfirmProjectAgents,
+} from "./project-agent-approval.js";
 import type { RawSubagentRequest } from "./request.js";
 import { validateSubagentRequest } from "./request.js";
 import { SubagentParamsSchema } from "./schema.js";
-import { executeSingleSubagent } from "./tool-executor.js";
+import {
+	executeSingleSubagent,
+	type SubagentDetails,
+} from "./tool-executor.js";
+
+function errorResult(text: string): AgentToolResult<
+	Partial<SubagentDetails>
+> & {
+	isError: true;
+} {
+	return {
+		content: [{ type: "text", text }],
+		details: { results: [] },
+		isError: true,
+	};
+}
 
 export default function registerSubagents(pi: ExtensionAPI) {
 	pi.registerCommand("subagents", {
 		description: "List discovered subagents",
 		handler: async (args, ctx) => {
 			const trimmed = args.trim();
-			const scope: AgentScope = trimmed === "project" || trimmed === "both" ? trimmed : "user";
+			const scope: AgentScope =
+				trimmed === "project" || trimmed === "both" ? trimmed : "user";
 			const discovery = discoverAgents(ctx.cwd, scope);
-			const lines = discovery.agents.map((agent) => `${agent.name} (${agent.source}): ${agent.description}`);
-			ctx.ui.notify(lines.length ? lines.join("\n") : `No agents found for scope: ${scope}`, lines.length ? "info" : "warning");
+			const lines = discovery.agents.map(
+				(agent) => `${agent.name} (${agent.source}): ${agent.description}`,
+			);
+			ctx.ui.notify(
+				lines.length ? lines.join("\n") : `No agents found for scope: ${scope}`,
+				lines.length ? "info" : "warning",
+			);
 		},
 	});
 
@@ -28,20 +54,28 @@ export default function registerSubagents(pi: ExtensionAPI) {
 			"Supports single mode (agent + task) and parallel mode (tasks array).",
 			'Agents are loaded from ~/.pi/agent/agents by default; set agentScope to "project" or "both" to include .pi/agents.',
 		].join(" "),
-		promptSnippet: "Delegate a bounded task to a named subagent with isolated context",
+		promptSnippet:
+			"Delegate a bounded task to a named subagent with isolated context",
 		promptGuidelines: [
 			"Use subagent when a task benefits from isolated context, specialized instructions, or independent investigation.",
 			"Use subagent parallel mode for independent investigations; let the main agent inspect results before delegating follow-up work.",
 		],
 		parameters: SubagentParamsSchema,
-		async execute(_toolCallId, params: RawSubagentRequest, signal, _onUpdate, ctx) {
+		async execute(
+			_toolCallId,
+			params: RawSubagentRequest,
+			signal,
+			_onUpdate,
+			ctx,
+		) {
 			const validation = validateSubagentRequest(params);
-			if (!validation.ok) {
-				return { content: [{ type: "text", text: validation.error }], details: { results: [] }, isError: true } as any;
-			}
+			if (!validation.ok) return errorResult(validation.error);
 
 			const discovery = discoverAgents(ctx.cwd, validation.value.agentScope);
-			const projectAgents = findRequestedProjectAgents(discovery.agents, getRequestedAgentNames(validation.value));
+			const projectAgents = findRequestedProjectAgents(
+				discovery.agents,
+				getRequestedAgentNames(validation.value),
+			);
 			if (
 				shouldConfirmProjectAgents({
 					agentScope: validation.value.agentScope,
@@ -56,11 +90,7 @@ export default function registerSubagents(pi: ExtensionAPI) {
 					`Agents: ${names}\nSource: ${discovery.projectAgentsDir ?? "(unknown)"}\n\nProject agents are repo-controlled. Continue only for trusted repositories.`,
 				);
 				if (!ok) {
-					return {
-						content: [{ type: "text", text: "Canceled: project-local subagents not approved." }],
-						details: { results: [] },
-						isError: true,
-					} as any;
+					return errorResult("Canceled: project-local subagents not approved.");
 				}
 			}
 

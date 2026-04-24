@@ -1,7 +1,10 @@
 import { spawn } from "node:child_process";
 import type { SpawnPi, SpawnResult } from "./runner.js";
 
-export function createNodeSpawnPi(commandOverride?: string, prefixArgs: string[] = []): SpawnPi {
+export function createNodeSpawnPi(
+	commandOverride?: string,
+	prefixArgs: string[] = [],
+): SpawnPi {
 	return (invocation) => {
 		return new Promise<SpawnResult>((resolve) => {
 			const command = commandOverride ?? invocation.command;
@@ -24,11 +27,19 @@ export function createNodeSpawnPi(commandOverride?: string, prefixArgs: string[]
 
 			child.on("error", (error) => {
 				stderr += error.message;
-				resolve({ exitCode: 1, stderr, stdoutLines: stdout.split("\n").filter((line) => line.length > 0) });
+				resolve({
+					exitCode: 1,
+					stderr,
+					stdoutLines: stdout.split("\n").filter((line) => line.length > 0),
+				});
 			});
 
 			child.on("close", (code) => {
-				resolve({ exitCode: code ?? 0, stderr, stdoutLines: stdout.split("\n").filter((line) => line.length > 0) });
+				resolve({
+					exitCode: code ?? 0,
+					stderr,
+					stdoutLines: stdout.split("\n").filter((line) => line.length > 0),
+				});
 			});
 
 			if (invocation.signal) {

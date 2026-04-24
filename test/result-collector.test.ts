@@ -25,7 +25,15 @@ describe("Pi JSON result collector", () => {
 		});
 
 		expect(result.messages).toHaveLength(1);
-		expect(result.usage).toEqual({ input: 100, output: 20, cacheRead: 5, cacheWrite: 2, cost: 0.0012, contextTokens: 120, turns: 1 });
+		expect(result.usage).toEqual({
+			input: 100,
+			output: 20,
+			cacheRead: 5,
+			cacheWrite: 2,
+			cost: 0.0012,
+			contextTokens: 120,
+			turns: 1,
+		});
 		expect(result.model).toBe("claude-haiku-4-5");
 		expect(result.stopReason).toBe("stop");
 	});

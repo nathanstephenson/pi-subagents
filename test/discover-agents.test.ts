@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { discoverAgents, findNearestProjectAgentsDir } from "../src/agents.js";
@@ -8,9 +8,16 @@ function tempDir() {
 	return mkdtempSync(join(tmpdir(), "pi-subagents-discover-test-"));
 }
 
-function writeAgent(dir: string, name: string, description = `${name} description`) {
+function writeAgent(
+	dir: string,
+	name: string,
+	description = `${name} description`,
+) {
 	mkdirSync(dir, { recursive: true });
-	writeFileSync(join(dir, `${name}.md`), `---\nname: ${name}\ndescription: ${description}\n---\n\n${name} prompt`);
+	writeFileSync(
+		join(dir, `${name}.md`),
+		`---\nname: ${name}\ndescription: ${description}\n---\n\n${name} prompt`,
+	);
 }
 
 describe("discoverAgents", () => {
@@ -20,7 +27,9 @@ describe("discoverAgents", () => {
 		mkdirSync(nested, { recursive: true });
 		mkdirSync(join(root, ".pi", "agents"), { recursive: true });
 
-		expect(findNearestProjectAgentsDir(nested)).toBe(join(root, ".pi", "agents"));
+		expect(findNearestProjectAgentsDir(nested)).toBe(
+			join(root, ".pi", "agents"),
+		);
 	});
 
 	test("uses user agents by default", () => {

@@ -2,11 +2,11 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { AgentConfig, AgentScope } from "./agents.js";
 import { getFinalOutput } from "./output.js";
 import type { ValidSubagentRequest } from "./request.js";
-import { runSingleAgent, type SpawnPi } from "./runner.js";
 import type { SingleRunResult } from "./result-collector.js";
+import { runSingleAgent, type SpawnPi } from "./runner.js";
 
 export interface SubagentDetails {
-	mode: "single" | "parallel" | "chain";
+	mode: "single" | "parallel";
 	agentScope: AgentScope;
 	projectAgentsDir: string | null;
 	results: SingleRunResult[];
@@ -21,7 +21,11 @@ export interface ExecuteSingleSubagentOptions {
 	signal?: AbortSignal;
 }
 
-function makeResult(text: string, details: SubagentDetails, isError?: boolean): AgentToolResult<SubagentDetails> {
+function makeResult(
+	text: string,
+	details: SubagentDetails,
+	isError?: boolean,
+): AgentToolResult<SubagentDetails> {
 	return {
 		content: [{ type: "text", text }],
 		details,
@@ -29,7 +33,9 @@ function makeResult(text: string, details: SubagentDetails, isError?: boolean): 
 	};
 }
 
-export async function executeSingleSubagent(options: ExecuteSingleSubagentOptions): Promise<AgentToolResult<SubagentDetails>> {
+export async function executeSingleSubagent(
+	options: ExecuteSingleSubagentOptions,
+): Promise<AgentToolResult<SubagentDetails>> {
 	const details = (results: SingleRunResult[]): SubagentDetails => ({
 		mode: "single",
 		agentScope: options.request.agentScope,
@@ -37,10 +43,18 @@ export async function executeSingleSubagent(options: ExecuteSingleSubagentOption
 		results,
 	});
 
-	const agent = options.agents.find((candidate) => candidate.name === options.request.agent);
+	const agent = options.agents.find(
+		(candidate) => candidate.name === options.request.agent,
+	);
 	if (!agent) {
-		const available = options.agents.map((candidate) => `"${candidate.name}"`).join(", ") || "none";
-		return makeResult(`Unknown agent: "${options.request.agent}". Available agents: ${available}.`, details([]), true);
+		const available =
+			options.agents.map((candidate) => `"${candidate.name}"`).join(", ") ||
+			"none";
+		return makeResult(
+			`Unknown agent: "${options.request.agent}". Available agents: ${available}.`,
+			details([]),
+			true,
+		);
 	}
 
 	const result = await runSingleAgent({
@@ -52,11 +66,25 @@ export async function executeSingleSubagent(options: ExecuteSingleSubagentOption
 		signal: options.signal,
 	});
 
-	const isError = result.exitCode !== 0 || result.stopReason === "error" || result.stopReason === "aborted";
+	const isError =
+		result.exitCode !== 0 ||
+		result.stopReason === "error" ||
+		result.stopReason === "aborted";
 	if (isError) {
-		const errorOutput = result.errorMessage || result.stderr || getFinalOutput(result.messages) || "(no output)";
-		return makeResult(`Agent ${result.stopReason || "failed"}: ${errorOutput}`, details([result]), true);
+		const errorOutput =
+			result.errorMessage ||
+			result.stderr ||
+			getFinalOutput(result.messages) ||
+			"(no output)";
+		return makeResult(
+			`Agent ${result.stopReason || "failed"}: ${errorOutput}`,
+			details([result]),
+			true,
+		);
 	}
 
-	return makeResult(getFinalOutput(result.messages) || "(no output)", details([result]));
+	return makeResult(
+		getFinalOutput(result.messages) || "(no output)",
+		details([result]),
+	);
 }

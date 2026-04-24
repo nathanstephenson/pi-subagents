@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { discoverAgentsInDirectories } from "../src/agents.js";
@@ -41,7 +41,10 @@ Find relevant files and summarize them.
 
 	test("ignores invalid markdown files", () => {
 		const dir = tempDir();
-		writeFileSync(join(dir, "missing-description.md"), `---\nname: broken\n---\n\nNope.\n`);
+		writeFileSync(
+			join(dir, "missing-description.md"),
+			`---\nname: broken\n---\n\nNope.\n`,
+		);
 		writeFileSync(join(dir, "notes.txt"), "not an agent");
 
 		expect(discoverAgentsInDirectories([{ dir, source: "user" }])).toEqual([]);
@@ -50,8 +53,14 @@ Find relevant files and summarize them.
 	test("later directories override earlier directories by agent name", () => {
 		const userDir = tempDir();
 		const projectDir = tempDir();
-		writeFileSync(join(userDir, "worker.md"), `---\nname: worker\ndescription: User worker\n---\n\nUser prompt.\n`);
-		writeFileSync(join(projectDir, "worker.md"), `---\nname: worker\ndescription: Project worker\n---\n\nProject prompt.\n`);
+		writeFileSync(
+			join(userDir, "worker.md"),
+			`---\nname: worker\ndescription: User worker\n---\n\nUser prompt.\n`,
+		);
+		writeFileSync(
+			join(projectDir, "worker.md"),
+			`---\nname: worker\ndescription: Project worker\n---\n\nProject prompt.\n`,
+		);
 
 		const agents = discoverAgentsInDirectories([
 			{ dir: userDir, source: "user" },

@@ -37,15 +37,26 @@ export function createRunResult(
 		exitCode: 0,
 		messages: [],
 		stderr: "",
-		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
+		usage: {
+			input: 0,
+			output: 0,
+			cacheRead: 0,
+			cacheWrite: 0,
+			cost: 0,
+			contextTokens: 0,
+			turns: 0,
+		},
 	};
 }
 
-function isObject(value: unknown): value is Record<string, any> {
+function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
 
-export function ingestPiJsonEvent(result: SingleRunResult, event: unknown): void {
+export function ingestPiJsonEvent(
+	result: SingleRunResult,
+	event: unknown,
+): void {
 	if (!isObject(event)) return;
 
 	if (event.type === "message_end" && event.message) {
