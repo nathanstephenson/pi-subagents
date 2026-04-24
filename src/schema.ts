@@ -11,8 +11,7 @@ export const SubagentParamsSchema = Type.Object({
 	agent: Type.Optional(Type.String({ description: "Name of the agent to invoke (single mode)" })),
 	task: Type.Optional(Type.String({ description: "Task to delegate (single mode)" })),
 	cwd: Type.Optional(Type.String({ description: "Working directory for the agent process (single mode)" })),
-	tasks: Type.Optional(Type.Array(TaskItem, { description: "Parallel tasks; not wired yet in this release slice" })),
-	chain: Type.Optional(Type.Array(TaskItem, { description: "Sequential tasks; not wired yet in this release slice" })),
+	tasks: Type.Optional(Type.Array(TaskItem, { description: "Parallel tasks to run concurrently" })),
 	agentScope: Type.Optional(
 		StringEnum(["user", "project", "both"] as const, {
 			description: 'Agent directories to use. Default: "user".',

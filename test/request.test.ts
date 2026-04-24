@@ -22,6 +22,13 @@ describe("subagent request validation", () => {
 		expect(validateSubagentRequest({ agent: "scout", task: "x", tasks: [{ agent: "planner", task: "y" }] }).ok).toBe(false);
 	});
 
+	test("rejects chain mode because orchestration belongs to the main agent", () => {
+		expect(validateSubagentRequest({ chain: [{ agent: "scout", task: "Find auth" }] })).toEqual({
+			ok: false,
+			error: "Chain mode is not supported. Let the main agent inspect each result and decide the next delegation.",
+		});
+	});
+
 	test("rejects too many parallel tasks", () => {
 		const tasks = Array.from({ length: 9 }, (_, index) => ({ agent: "scout", task: `Task ${index}` }));
 
