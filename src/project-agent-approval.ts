@@ -15,8 +15,7 @@ export function findRequestedProjectAgents(agents: AgentConfig[], requestedAgent
 
 export function getRequestedAgentNames(request: ValidSubagentRequest): string[] {
 	if (request.mode === "single") return [request.agent];
-	if (request.mode === "parallel") return request.tasks.map((task) => task.agent);
-	return request.chain.map((task) => task.agent);
+	return request.tasks.map((task) => task.agent);
 }
 
 export function shouldConfirmProjectAgents(options: ShouldConfirmProjectAgentsOptions): boolean {

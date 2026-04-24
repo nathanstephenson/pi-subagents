@@ -20,8 +20,7 @@ export interface RawSubagentRequest {
 
 export type ValidSubagentRequest =
 	| (TaskRequest & { mode: "single"; agentScope: AgentScope; confirmProjectAgents: boolean })
-	| { mode: "parallel"; tasks: TaskRequest[]; agentScope: AgentScope; confirmProjectAgents: boolean }
-	| { mode: "chain"; chain: TaskRequest[]; agentScope: AgentScope; confirmProjectAgents: boolean };
+	| { mode: "parallel"; tasks: TaskRequest[]; agentScope: AgentScope; confirmProjectAgents: boolean };
 
 export type ValidationResult = { ok: true; value: ValidSubagentRequest } | { ok: false; error: string };
 
@@ -29,7 +28,15 @@ export function validateSubagentRequest(params: RawSubagentRequest): ValidationR
 	const hasSingle = Boolean(params.agent && params.task);
 	const hasParallel = Boolean(params.tasks?.length);
 	const hasChain = Boolean(params.chain?.length);
-	const modeCount = Number(hasSingle) + Number(hasParallel) + Number(hasChain);
+
+	if (hasChain) {
+		return {
+			ok: false,
+			error: "Chain mode is not supported. Let the main agent inspect each result and decide the next delegation.",
+		};
+	}
+
+	const modeCount = Number(hasSingle) + Number(hasParallel);
 
 	if (modeCount !== 1) {
 		return { ok: false, error: "Provide exactly one mode: single (agent + task), parallel (tasks), or chain (chain)." };
@@ -54,5 +61,5 @@ export function validateSubagentRequest(params: RawSubagentRequest): ValidationR
 		return { ok: true, value: { mode: "parallel", ...common, tasks: params.tasks! } };
 	}
 
-	return { ok: true, value: { mode: "chain", ...common, chain: params.chain! } };
+	return { ok: false, error: "Unreachable validation state." };
 }

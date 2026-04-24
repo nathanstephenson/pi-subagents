@@ -25,27 +25,19 @@ export default function registerSubagents(pi: ExtensionAPI) {
 		label: "Subagent",
 		description: [
 			"Delegate tasks to specialized subagents with isolated context.",
-			"Current implementation supports single mode: provide agent and task.",
+			"Supports single mode (agent + task) and parallel mode (tasks array).",
 			'Agents are loaded from ~/.pi/agent/agents by default; set agentScope to "project" or "both" to include .pi/agents.',
 		].join(" "),
 		promptSnippet: "Delegate a bounded task to a named subagent with isolated context",
 		promptGuidelines: [
 			"Use subagent when a task benefits from isolated context, specialized instructions, or independent investigation.",
-			"Use subagent single mode by providing agent and task; parallel and chain modes are planned but not active yet.",
+			"Use subagent parallel mode for independent investigations; let the main agent inspect results before delegating follow-up work.",
 		],
 		parameters: SubagentParamsSchema,
 		async execute(_toolCallId, params: RawSubagentRequest, signal, _onUpdate, ctx) {
 			const validation = validateSubagentRequest(params);
 			if (!validation.ok) {
 				return { content: [{ type: "text", text: validation.error }], details: { results: [] }, isError: true } as any;
-			}
-
-			if (validation.value.mode === "chain") {
-				return {
-					content: [{ type: "text", text: "Chain mode is not implemented yet. Use agent + task or tasks[]." }],
-					details: { results: [] },
-					isError: true,
-				} as any;
 			}
 
 			const discovery = discoverAgents(ctx.cwd, validation.value.agentScope);
