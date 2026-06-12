@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentConfig } from "../src/agents.js";
-import { type PiInvocation, runSingleAgent } from "../src/runner.js";
+import {
+	type NestedSessionsHost,
+	type PiInvocation,
+	runSingleAgent,
+} from "../src/runner.js";
 
 const scout: AgentConfig = {
 	name: "scout",
@@ -13,6 +17,127 @@ const scout: AgentConfig = {
 };
 
 describe("single agent runner", () => {
+	test("uses nested session host instead of spawning Pi when available", async () => {
+		let spawnCalled = false;
+		const started: unknown[] = [];
+		const host: NestedSessionsHost = {
+			async startNestedSession(input) {
+				started.push(input);
+				return { id: "nested-1" };
+			},
+			async *streamNestedSession(id) {
+				expect(id).toBe("nested-1");
+				yield {
+					nestedSessionId: id,
+					status: "done",
+					summary: "Found auth.ts",
+					completedAt: "2026-06-12T00:00:00.000Z",
+				};
+			},
+		};
+
+		const result = await runSingleAgent({
+			defaultCwd: "/repo",
+			cwd: "/repo/packages/app",
+			agent: scout,
+			task: "Find auth code",
+			nestedSessions: host,
+			spawn: async () => {
+				spawnCalled = true;
+				return { exitCode: 1, stderr: "should not spawn", stdoutLines: [] };
+			},
+		});
+
+		expect(spawnCalled).toBe(false);
+		expect(started).toEqual([
+			{
+				agentName: "scout",
+				task: "Find auth code",
+				cwd: "/repo/packages/app",
+				model: "claude-haiku-4-5",
+				tools: ["read", "grep"],
+				systemPrompt: "You are scout.",
+				metadata: {
+					agentSource: "user",
+					agentFilePath: "/agents/scout.md",
+				},
+			},
+		]);
+		expect(result.exitCode).toBe(0);
+		expect(result.messages[0]?.role).toBe("assistant");
+		expect(result.messages[0]?.content).toEqual([
+			{ type: "text", text: "Found auth.ts" },
+		]);
+	});
+
+	test("host path with aborted signal before start does not start child or spawn", async () => {
+		let spawnCalled = false;
+		let startCalled = false;
+		const controller = new AbortController();
+		controller.abort();
+
+		const result = await runSingleAgent({
+			defaultCwd: "/repo",
+			agent: scout,
+			task: "Find auth code",
+			signal: controller.signal,
+			nestedSessions: {
+				async startNestedSession() {
+					startCalled = true;
+					return { id: "nested-1" };
+				},
+				async *streamNestedSession() {},
+			},
+			spawn: async () => {
+				spawnCalled = true;
+				return { exitCode: 1, stderr: "should not spawn", stdoutLines: [] };
+			},
+		});
+
+		expect(startCalled).toBe(false);
+		expect(spawnCalled).toBe(false);
+		expect(result.exitCode).toBe(1);
+		expect(result.stopReason).toBe("cancelled");
+		expect(result.errorMessage).toBe("Subagent run cancelled.");
+	});
+
+	test("host path abort during stream cancels child and exits non-zero", async () => {
+		const controller = new AbortController();
+		const cancelled: string[] = [];
+		let resumeStream: (() => void) | undefined;
+
+		const resultPromise = runSingleAgent({
+			defaultCwd: "/repo",
+			agent: scout,
+			task: "Find auth code",
+			signal: controller.signal,
+			nestedSessions: {
+				async startNestedSession() {
+					return { id: "nested-1" };
+				},
+				async *streamNestedSession() {
+					await new Promise<void>((resolve) => {
+						resumeStream = resolve;
+					});
+				},
+				async cancelNestedSession(id) {
+					cancelled.push(id);
+					resumeStream?.();
+				},
+			},
+			spawn: async () => ({ exitCode: 1, stderr: "should not spawn", stdoutLines: [] }),
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		controller.abort();
+		const result = await resultPromise;
+
+		expect(cancelled).toEqual(["nested-1"]);
+		expect(result.exitCode).toBe(1);
+		expect(result.stopReason).toBe("cancelled");
+		expect(result.errorMessage).toBe("Subagent run cancelled.");
+	});
+
 	test("builds Pi JSON invocation and collects output", async () => {
 		const calls: PiInvocation[] = [];
 		const result = await runSingleAgent({

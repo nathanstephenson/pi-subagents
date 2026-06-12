@@ -19,6 +19,40 @@ const scout: AgentConfig = {
 };
 
 describe("subagent tool executor", () => {
+	test("passes nested session host to single agent runner", async () => {
+		let spawnCalled = false;
+		const result = await executeSingleSubagent({
+			defaultCwd: "/repo",
+			agents: [scout],
+			request: {
+				mode: "single",
+				agentScope: "user",
+				confirmProjectAgents: true,
+				agent: "scout",
+				task: "Find auth",
+			},
+			nestedSessions: {
+				async startNestedSession() {
+					return { id: "nested-1" };
+				},
+				async *streamNestedSession(id) {
+					yield {
+						nestedSessionId: id,
+						status: "done",
+						summary: "Host result",
+					};
+				},
+			},
+			spawn: async () => {
+				spawnCalled = true;
+				return { exitCode: 1, stderr: "should not spawn", stdoutLines: [] };
+			},
+		});
+
+		expect(spawnCalled).toBe(false);
+		expect(result.content).toEqual([{ type: "text", text: "Host result" }]);
+	});
+
 	test("runs known single agent and returns final output", async () => {
 		const result = await executeSingleSubagent({
 			defaultCwd: "/repo",
