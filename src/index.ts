@@ -10,6 +10,7 @@ import {
 } from "./project-agent-approval.js";
 import type { RawSubagentRequest } from "./request.js";
 import { validateSubagentRequest } from "./request.js";
+import type { NestedSessionsHost } from "./runner.js";
 import { SubagentParamsSchema } from "./schema.js";
 import {
 	executeSingleSubagent,
@@ -26,6 +27,23 @@ function errorResult(text: string): AgentToolResult<
 		details: { results: [] },
 		isError: true,
 	};
+}
+
+function getNestedSessionsHost(ctx: {
+	ui?: unknown;
+}): NestedSessionsHost | undefined {
+	const ui = ctx.ui;
+	if (typeof ui !== "object" || ui === null) return undefined;
+	const nestedSessions = (ui as { nestedSessions?: unknown }).nestedSessions;
+	if (typeof nestedSessions !== "object" || nestedSessions === null)
+		return undefined;
+	const candidate = nestedSessions as Partial<NestedSessionsHost>;
+	if (
+		typeof candidate.startNestedSession !== "function" ||
+		typeof candidate.streamNestedSession !== "function"
+	)
+		return undefined;
+	return candidate as NestedSessionsHost;
 }
 
 export default function registerSubagents(pi: ExtensionAPI) {
@@ -95,6 +113,7 @@ export default function registerSubagents(pi: ExtensionAPI) {
 			}
 
 			const spawn = createNodeSpawnPi();
+			const nestedSessions = getNestedSessionsHost(ctx);
 			if (validation.value.mode === "parallel") {
 				return executeParallelSubagents({
 					defaultCwd: ctx.cwd,
@@ -103,6 +122,7 @@ export default function registerSubagents(pi: ExtensionAPI) {
 					request: validation.value,
 					spawn,
 					signal,
+					nestedSessions,
 				});
 			}
 
@@ -113,6 +133,7 @@ export default function registerSubagents(pi: ExtensionAPI) {
 				request: validation.value,
 				spawn,
 				signal,
+				nestedSessions,
 			});
 		},
 	});

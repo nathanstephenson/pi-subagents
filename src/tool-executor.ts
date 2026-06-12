@@ -3,7 +3,11 @@ import type { AgentConfig, AgentScope } from "./agents.js";
 import { getFinalOutput } from "./output.js";
 import type { ValidSubagentRequest } from "./request.js";
 import type { SingleRunResult } from "./result-collector.js";
-import { runSingleAgent, type SpawnPi } from "./runner.js";
+import {
+	type NestedSessionsHost,
+	runSingleAgent,
+	type SpawnPi,
+} from "./runner.js";
 
 export interface SubagentDetails {
 	mode: "single" | "parallel";
@@ -19,6 +23,7 @@ export interface ExecuteSingleSubagentOptions {
 	request: Extract<ValidSubagentRequest, { mode: "single" }>;
 	spawn: SpawnPi;
 	signal?: AbortSignal;
+	nestedSessions?: NestedSessionsHost;
 }
 
 function makeResult(
@@ -64,6 +69,7 @@ export async function executeSingleSubagent(
 		task: options.request.task,
 		spawn: options.spawn,
 		signal: options.signal,
+		nestedSessions: options.nestedSessions,
 	});
 
 	const isError =

@@ -3,7 +3,11 @@ import type { AgentConfig } from "./agents.js";
 import { getFinalOutput } from "./output.js";
 import type { ValidSubagentRequest } from "./request.js";
 import type { SingleRunResult } from "./result-collector.js";
-import { runSingleAgent, type SpawnPi } from "./runner.js";
+import {
+	type NestedSessionsHost,
+	runSingleAgent,
+	type SpawnPi,
+} from "./runner.js";
 import type { SubagentDetails } from "./tool-executor.js";
 
 const MAX_CONCURRENCY = 4;
@@ -15,6 +19,7 @@ export interface ExecuteParallelSubagentsOptions {
 	request: Extract<ValidSubagentRequest, { mode: "parallel" }>;
 	spawn: SpawnPi;
 	signal?: AbortSignal;
+	nestedSessions?: NestedSessionsHost;
 }
 
 function textResult(
@@ -89,6 +94,7 @@ export async function executeParallelSubagents(
 				task: task.task,
 				spawn: options.spawn,
 				signal: options.signal,
+				nestedSessions: options.nestedSessions,
 			});
 		},
 	);

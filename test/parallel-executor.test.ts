@@ -26,6 +26,51 @@ const agents: AgentConfig[] = [
 ];
 
 describe("parallel subagent executor", () => {
+	test("runs parallel tasks through nested session host", async () => {
+		const started: string[] = [];
+		let spawnCalled = false;
+		const result = await executeParallelSubagents({
+			defaultCwd: "/repo",
+			agents,
+			request: {
+				mode: "parallel",
+				agentScope: "user",
+				confirmProjectAgents: true,
+				tasks: [
+					{ agent: "scout", task: "Find auth" },
+					{ agent: "planner", task: "Plan auth" },
+				],
+			},
+			nestedSessions: {
+				async startNestedSession(input) {
+					started.push(`${input.agentName}:${input.task}`);
+					return { id: input.agentName };
+				},
+				async *streamNestedSession(id) {
+					yield {
+						nestedSessionId: id,
+						status: "done",
+						summary: `${id} host result`,
+					};
+				},
+			},
+			spawn: async () => {
+				spawnCalled = true;
+				return { exitCode: 1, stderr: "should not spawn", stdoutLines: [] };
+			},
+		});
+
+		expect(spawnCalled).toBe(false);
+		expect(started.sort()).toEqual([
+			"planner:Plan auth",
+			"scout:Find auth",
+		]);
+		expect(result.details.results.map((run) => run.agent)).toEqual([
+			"scout",
+			"planner",
+		]);
+	});
+
 	test("runs tasks and preserves request order", async () => {
 		const result = await executeParallelSubagents({
 			defaultCwd: "/repo",
